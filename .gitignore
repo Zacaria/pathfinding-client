@@ -1,0 +1,12 @@
+/target/
+**/target/
+
+web/node_modules/
+web/dist/
+
+# wasm-pack outputs (keep web/src/wasm/engine.d.ts)
+web/src/wasm/*.js
+web/src/wasm/*.wasm
+web/src/wasm/*.map
+
+.npm-cache
