@@ -9,7 +9,6 @@ export type Algorithm =
   | "astar"
   | "bfs"
   | "bfs_bidirectional"
-  | "bmssp"
   | "dfs"
   | "dijkstra"
   | "fringe"
@@ -25,6 +24,34 @@ export type Problem = {
   goal: Point;
   algorithm: Algorithm;
   k?: number;
+};
+
+export type MultiGoalProblem = {
+  width: number;
+  height: number;
+  cells: Cell[];
+  start: Point;
+  goals: Point[];
+  algorithm: Algorithm;
+  k?: number;
+};
+
+export type ExitResult = {
+  goal: Point;
+  found: boolean;
+  path: Point[];
+  path_cost: number | null;
+};
+
+export type MultiSolveResult = {
+  algorithm: Algorithm;
+  elapsed_ms: number;
+  visited: Point[];
+  visited_count: number;
+  goals_count: number;
+  reachable_goals_count: number;
+  best_goal_index: number | null;
+  results: ExitResult[];
 };
 
 export type SolveResult = {

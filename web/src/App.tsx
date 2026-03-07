@@ -12,10 +12,19 @@ import {
 } from "lucide-react";
 
 import { loadEngine } from "@/engine";
-import type { Algorithm, Cell, Point, Problem, SolveResult } from "@/types";
+import type {
+  Algorithm,
+  Cell,
+  MultiGoalProblem,
+  MultiSolveResult,
+  Point,
+  Problem,
+  SolveResult,
+} from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
@@ -24,6 +33,8 @@ import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 type Tool = "wall" | "erase" | "weight" | "start" | "goal";
+type Mode = "grid" | "scrolling";
+type ScrollDirection = "right_to_left" | "left_to_right" | "top_to_bottom" | "bottom_to_top";
 
 function toIdx(width: number, p: Point) {
   return p.y * width + p.x;
@@ -39,6 +50,95 @@ function emptyCells(width: number, height: number): Cell[] {
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
+}
+
+function exitsForDirection(
+  direction: ScrollDirection,
+  width: number,
+  height: number,
+  cells: Cell[],
+): Point[] {
+  const exits: Point[] = [];
+  if (direction === "right_to_left") {
+    const x = width - 1;
+    for (let y = 0; y < height; y++) {
+      const idx = y * width + x;
+      if (!cells[idx]?.wall) exits.push({ x, y });
+    }
+    return exits;
+  }
+  if (direction === "left_to_right") {
+    const x = 0;
+    for (let y = 0; y < height; y++) {
+      const idx = y * width + x;
+      if (!cells[idx]?.wall) exits.push({ x, y });
+    }
+    return exits;
+  }
+  if (direction === "top_to_bottom") {
+    const y = 0;
+    for (let x = 0; x < width; x++) {
+      const idx = y * width + x;
+      if (!cells[idx]?.wall) exits.push({ x, y });
+    }
+    return exits;
+  }
+  const y = height - 1;
+  for (let x = 0; x < width; x++) {
+    const idx = y * width + x;
+    if (!cells[idx]?.wall) exits.push({ x, y });
+  }
+  return exits;
+}
+
+function shiftCells(
+  direction: ScrollDirection,
+  width: number,
+  height: number,
+  prev: Cell[],
+  makeIncoming: () => Cell,
+): Cell[] {
+  const next = prev.slice();
+
+  if (direction === "right_to_left") {
+    for (let y = 0; y < height; y++) {
+      const row = y * width;
+      for (let x = 0; x < width - 1; x++) {
+        next[row + x] = prev[row + x + 1] ?? { wall: false, weight: 1 };
+      }
+      next[row + (width - 1)] = makeIncoming();
+    }
+    return next;
+  }
+
+  if (direction === "left_to_right") {
+    for (let y = 0; y < height; y++) {
+      const row = y * width;
+      for (let x = width - 1; x > 0; x--) {
+        next[row + x] = prev[row + x - 1] ?? { wall: false, weight: 1 };
+      }
+      next[row + 0] = makeIncoming();
+    }
+    return next;
+  }
+
+  if (direction === "top_to_bottom") {
+    for (let y = height - 1; y > 0; y--) {
+      for (let x = 0; x < width; x++) {
+        next[y * width + x] = prev[(y - 1) * width + x] ?? { wall: false, weight: 1 };
+      }
+    }
+    for (let x = 0; x < width; x++) next[x] = makeIncoming();
+    return next;
+  }
+
+  for (let y = 0; y < height - 1; y++) {
+    for (let x = 0; x < width; x++) {
+      next[y * width + x] = prev[(y + 1) * width + x] ?? { wall: false, weight: 1 };
+    }
+  }
+  for (let x = 0; x < width; x++) next[(height - 1) * width + x] = makeIncoming();
+  return next;
 }
 
 export default function App() {
@@ -57,6 +157,8 @@ export default function App() {
   const [cells, setCells] = useState<Cell[]>(() => emptyCells(30, 20));
   const [start, setStart] = useState<Point>({ x: 2, y: 2 });
   const [goal, setGoal] = useState<Point>({ x: 27, y: 17 });
+  const [widthDraft, setWidthDraft] = useState(() => String(30));
+  const [heightDraft, setHeightDraft] = useState(() => String(20));
 
   const [tool, setTool] = useState<Tool>("wall");
   const [paintWeight, setPaintWeight] = useState(5);
@@ -79,6 +181,22 @@ export default function App() {
   const [maxWeight, setMaxWeight] = useState(9);
 
   const pointerDownRef = useRef(false);
+  const engineRef = useRef<Awaited<ReturnType<typeof loadEngine>> | null>(null);
+
+  const [mode, setMode] = useState<Mode>("grid");
+  const [scrollingRunning, setScrollingRunning] = useState(false);
+  const [scrollDirection, setScrollDirection] = useState<ScrollDirection>("right_to_left");
+  const [ticksPerSecond, setTicksPerSecond] = useState(4);
+  const [scrollSeed, setScrollSeed] = useState<number>(() => Date.now());
+  const rngStateRef = useRef<number>(scrollSeed >>> 0);
+  const [scrollingCells, setScrollingCells] = useState<Cell[]>(() => emptyCells(30, 20));
+  const scrollingCellsRef = useRef<Cell[]>(scrollingCells);
+  const [multiSolve, setMultiSolve] = useState<MultiSolveResult | null>(null);
+  const [scrollOverlayAll, setScrollOverlayAll] = useState<Set<number>>(() => new Set());
+  const [scrollOverlayBest, setScrollOverlayBest] = useState<Set<number>>(() => new Set());
+  const [scrollExits, setScrollExits] = useState<Set<number>>(() => new Set());
+  const [tickMs, setTickMs] = useState<number | null>(null);
+  const tickHistoryRef = useRef<number[]>([]);
 
   const startIdx = useMemo(() => toIdx(width, start), [start, width]);
   const goalIdx = useMemo(() => toIdx(width, goal), [goal, width]);
@@ -92,6 +210,194 @@ export default function App() {
     () => new Set(pathTrace.slice(0, pathShown)),
     [pathShown, pathTrace],
   );
+
+  const metrics = useMemo(() => {
+    if (mode === "scrolling") {
+      const result =
+        multiSolve == null
+          ? "—"
+          : multiSolve.reachable_goals_count > 0
+            ? "Exit reachable"
+            : "No exit";
+      const time = tickMs != null ? `${tickMs.toFixed(2)} ms/tick` : "—";
+      const visited = multiSolve != null ? String(multiSolve.visited_count) : "—";
+      const pathLen = multiSolve?.best_goal_index != null
+        ? String(multiSolve.results[multiSolve.best_goal_index]?.path.length ?? 0)
+        : "—";
+      const exits = multiSolve != null ? `${multiSolve.reachable_goals_count}/${multiSolve.goals_count}` : "—";
+      const cost =
+        multiSolve?.best_goal_index != null
+          ? String(
+              multiSolve.results[multiSolve.best_goal_index]?.path_cost ??
+                (multiSolve.results[multiSolve.best_goal_index]?.path.length
+                  ? multiSolve.results[multiSolve.best_goal_index]!.path.length - 1
+                  : 0),
+            )
+          : "—";
+      return {
+        result,
+        time,
+        visited,
+        secondaryLabel: "Exits",
+        secondaryValue: exits,
+        costLabel: "Cost (best)",
+        costValue: cost,
+        pathLen,
+      };
+    }
+
+    const result = solveResult == null ? "—" : solveResult.found ? "Path found" : "No path";
+    const time = solveResult == null ? "—" : `${solveResult.elapsed_ms.toFixed(2)} ms`;
+    const visited = solveResult == null ? "—" : String(solveResult.visited_count);
+    const pathLen = solveResult == null ? "—" : String(solveResult.path.length);
+    const cost =
+      solveResult == null
+        ? "—"
+        : String(solveResult.path_cost ?? (solveResult.path.length ? solveResult.path.length - 1 : 0));
+    return {
+      result,
+      time,
+      visited,
+      secondaryLabel: "Path length",
+      secondaryValue: pathLen,
+      costLabel: "Cost",
+      costValue: cost,
+      pathLen,
+    };
+  }, [mode, multiSolve, solveResult, tickMs]);
+
+  useEffect(() => {
+    loadEngine()
+      .then((m) => {
+        engineRef.current = m;
+      })
+      .catch(() => {
+        // handled on demand
+      });
+  }, []);
+
+  useEffect(() => {
+    rngStateRef.current = scrollSeed >>> 0;
+  }, [scrollSeed]);
+
+  useEffect(() => {
+    scrollingCellsRef.current = scrollingCells;
+  }, [scrollingCells]);
+
+  useEffect(() => {
+    setWidthDraft(String(width));
+  }, [width]);
+
+  useEffect(() => {
+    setHeightDraft(String(height));
+  }, [height]);
+
+  useEffect(() => {
+    if (mode !== "scrolling") {
+      setScrollingRunning(false);
+      return;
+    }
+    setScrollingCells(cells);
+    setMultiSolve(null);
+    setScrollOverlayAll(new Set());
+    setScrollOverlayBest(new Set());
+    setScrollExits(new Set());
+    setTickMs(null);
+    tickHistoryRef.current = [];
+    rngStateRef.current = scrollSeed >>> 0;
+    setError(null);
+  }, [cells, mode, scrollSeed]);
+
+  function rand01() {
+    let x = rngStateRef.current >>> 0;
+    x ^= x << 13;
+    x ^= x >>> 17;
+    x ^= x << 5;
+    rngStateRef.current = x >>> 0;
+    return (rngStateRef.current >>> 0) / 0xffffffff;
+  }
+
+  function makeIncomingCell(): Cell {
+    const isWall = rand01() < wallProbability;
+    if (isWall) return { wall: true, weight: 1 };
+    const isWeighted = rand01() < weightedProbability;
+    if (!isWeighted) return { wall: false, weight: 1 };
+    const maxW = clamp(maxWeight, 2, 99);
+    const w = 2 + Math.floor(rand01() * Math.max(1, maxW - 1));
+    return { wall: false, weight: clamp(w, 2, 99) };
+  }
+
+  async function scrollingTick(nextCells: Cell[]) {
+    const engine = engineRef.current ?? (await loadEngine());
+    engineRef.current = engine;
+
+    const exits = exitsForDirection(scrollDirection, width, height, nextCells);
+    setScrollExits(new Set(exits.map((p) => toIdx(width, p))));
+
+    const problem: MultiGoalProblem = {
+      width,
+      height,
+      cells: nextCells,
+      start,
+      goals: exits,
+      algorithm,
+      k: algorithm === "yen" ? yenK : undefined,
+    };
+
+    const t0 = performance.now();
+    const r = engine.solve_multi(problem);
+    const dt = performance.now() - t0;
+    setTickMs(dt);
+    tickHistoryRef.current = [...tickHistoryRef.current.slice(-29), dt];
+    setMultiSolve(r);
+
+    const all = new Set<number>();
+    for (const rr of r.results) {
+      for (const p of rr.path) all.add(toIdx(width, p));
+    }
+    setScrollOverlayAll(all);
+
+    const best = new Set<number>();
+    if (r.best_goal_index != null) {
+      const idx = r.best_goal_index;
+      const bestPath = r.results[idx]?.path ?? [];
+      for (const p of bestPath) best.add(toIdx(width, p));
+    }
+    setScrollOverlayBest(best);
+  }
+
+  useEffect(() => {
+    if (mode !== "scrolling") return;
+    if (!scrollingRunning) return;
+
+    const intervalMs = Math.max(60, Math.round(1000 / clamp(ticksPerSecond, 1, 30)));
+    const t = window.setInterval(() => {
+      const prev = scrollingCellsRef.current;
+      const shifted = shiftCells(scrollDirection, width, height, prev, makeIncomingCell);
+      const sIdx = toIdx(width, start);
+      if (shifted[sIdx]) shifted[sIdx] = { wall: false, weight: 1 };
+      setScrollingCells(shifted);
+      scrollingTick(shifted).catch((e) => {
+        setError(e instanceof Error ? e.message : String(e));
+        setScrollingRunning(false);
+      });
+    }, intervalMs);
+
+    return () => window.clearInterval(t);
+  }, [
+    algorithm,
+    height,
+    mode,
+    scrollDirection,
+    scrollingRunning,
+    start,
+    ticksPerSecond,
+    wallProbability,
+    weightedProbability,
+    width,
+    yenK,
+    maxWeight,
+  ]);
 
   useEffect(() => {
     if (!isPlaying) return;
@@ -252,7 +558,6 @@ export default function App() {
               <Badge variant="secondary">DFS</Badge>
               <Badge variant="secondary">IDDFS</Badge>
               <Badge variant="secondary">Dijkstra</Badge>
-              <Badge variant="secondary">BMSSP</Badge>
               <Badge variant="secondary">A*</Badge>
               <Badge variant="secondary">Fringe</Badge>
               <Badge variant="secondary">IDA*</Badge>
@@ -263,6 +568,15 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-3">
+            <ToggleGroup
+              type="single"
+              value={mode}
+              onValueChange={(v) => v && setMode(v as Mode)}
+              className="hidden sm:flex"
+            >
+              <ToggleGroupItem value="grid">Grid</ToggleGroupItem>
+              <ToggleGroupItem value="scrolling">Scrolling</ToggleGroupItem>
+            </ToggleGroup>
             <div className="flex items-center gap-2">
               <Label htmlFor="theme" className="text-sm text-muted-foreground">
                 Dark
@@ -275,6 +589,31 @@ export default function App() {
             </div>
           </div>
         </header>
+
+        <Card className="sticky top-0 z-10 border bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <CardContent className="grid gap-2 p-4 text-sm sm:grid-cols-5">
+            <div className="flex items-center justify-between gap-2 sm:flex-col sm:items-start">
+              <span className="text-muted-foreground">Result</span>
+              <span className="font-medium">{metrics.result}</span>
+            </div>
+            <div className="flex items-center justify-between gap-2 sm:flex-col sm:items-start">
+              <span className="text-muted-foreground">Time</span>
+              <span className="font-medium">{metrics.time}</span>
+            </div>
+            <div className="flex items-center justify-between gap-2 sm:flex-col sm:items-start">
+              <span className="text-muted-foreground">Visited</span>
+              <span className="font-medium">{metrics.visited}</span>
+            </div>
+            <div className="flex items-center justify-between gap-2 sm:flex-col sm:items-start">
+              <span className="text-muted-foreground">{metrics.secondaryLabel}</span>
+              <span className="font-medium">{metrics.secondaryValue}</span>
+            </div>
+            <div className="flex items-center justify-between gap-2 sm:flex-col sm:items-start">
+              <span className="text-muted-foreground">{metrics.costLabel}</span>
+              <span className="font-medium">{metrics.costValue}</span>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[360px_1fr]">
           <aside className="flex flex-col gap-4">
@@ -295,7 +634,6 @@ export default function App() {
                       <SelectItem value="dfs">DFS</SelectItem>
                       <SelectItem value="iddfs">IDDFS</SelectItem>
                       <SelectItem value="dijkstra">Dijkstra</SelectItem>
-                      <SelectItem value="bmssp">BMSSP</SelectItem>
                       <SelectItem value="astar">A*</SelectItem>
                       <SelectItem value="fringe">Fringe</SelectItem>
                       <SelectItem value="idastar">IDA*</SelectItem>
@@ -336,57 +674,158 @@ export default function App() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <Button onClick={runSolve}>
+                  <Button
+                    onClick={mode === "scrolling" ? () => setScrollingRunning(true) : runSolve}
+                  >
                     <Play className="h-4 w-4" />
-                    Run
+                    {mode === "scrolling" ? "Start" : "Run"}
                   </Button>
                   <Button
                     variant="secondary"
-                    onClick={() => setIsPlaying((v) => !v)}
-                    disabled={visitedTrace.length === 0 && pathTrace.length === 0}
-                  >
-                    {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                    {isPlaying ? "Pause" : "Play"}
-                  </Button>
-                  <Button
-                    variant="outline"
                     onClick={() => {
-                      if (visitedShown < visitedTrace.length) setVisitedShown((v) => v + 1);
-                      else if (pathShown < pathTrace.length) setPathShown((v) => v + 1);
+                      if (mode === "scrolling") setScrollingRunning((v) => !v);
+                      else setIsPlaying((v) => !v);
                     }}
                     disabled={
-                      visitedShown >= visitedTrace.length && pathShown >= pathTrace.length
+                      mode === "scrolling" ? false : visitedTrace.length === 0 && pathTrace.length === 0
                     }
                   >
-                    Step
+                    {mode === "scrolling" ? (
+                      scrollingRunning ? (
+                        <Pause className="h-4 w-4" />
+                      ) : (
+                        <Play className="h-4 w-4" />
+                      )
+                    ) : isPlaying ? (
+                      <Pause className="h-4 w-4" />
+                    ) : (
+                      <Play className="h-4 w-4" />
+                    )}
+                    {mode === "scrolling"
+                      ? scrollingRunning
+                        ? "Pause"
+                        : "Play"
+                      : isPlaying
+                        ? "Pause"
+                        : "Play"}
                   </Button>
+                  {mode === "grid" ? (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        if (visitedShown < visitedTrace.length) setVisitedShown((v) => v + 1);
+                        else if (pathShown < pathTrace.length) setPathShown((v) => v + 1);
+                      }}
+                      disabled={visitedShown >= visitedTrace.length && pathShown >= pathTrace.length}
+                    >
+                      Step
+                    </Button>
+                  ) : null}
                   <Button
                     variant="outline"
                     onClick={() => {
-                      resetPlayback();
-                      setVisitedShown(0);
-                      setPathShown(0);
+                      if (mode === "scrolling") {
+                        setScrollingRunning(false);
+                        setScrollingCells(cells);
+                        setMultiSolve(null);
+                        setScrollOverlayAll(new Set());
+                        setScrollOverlayBest(new Set());
+                        setScrollExits(new Set());
+                        setTickMs(null);
+                        tickHistoryRef.current = [];
+                        rngStateRef.current = scrollSeed >>> 0;
+                        setError(null);
+                      } else {
+                        resetPlayback();
+                        setVisitedShown(0);
+                        setPathShown(0);
+                      }
                     }}
-                    disabled={visitedTrace.length === 0 && pathTrace.length === 0}
+                    disabled={
+                      mode === "grid" ? visitedTrace.length === 0 && pathTrace.length === 0 : false
+                    }
                   >
                     <RefreshCw className="h-4 w-4" />
                     Reset
                   </Button>
                 </div>
 
-                <div className="grid gap-2">
-                  <div className="flex items-center justify-between">
-                    <Label>Speed</Label>
-                    <span className="text-xs text-muted-foreground">{stepsPerSecond} steps/s</span>
+                {mode === "grid" ? (
+                  <div className="grid gap-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Speed</Label>
+                      <span className="text-xs text-muted-foreground">
+                        {stepsPerSecond} steps/s
+                      </span>
+                    </div>
+                    <Slider
+                      value={[stepsPerSecond]}
+                      min={10}
+                      max={240}
+                      step={5}
+                      onValueChange={(v) => setStepsPerSecond(v[0] ?? 80)}
+                    />
                   </div>
-                  <Slider
-                    value={[stepsPerSecond]}
-                    min={10}
-                    max={240}
-                    step={5}
-                    onValueChange={(v) => setStepsPerSecond(v[0] ?? 80)}
-                  />
-                </div>
+                ) : (
+                  <div className="grid gap-3">
+                    <div className="grid gap-2">
+                      <div className="flex items-center justify-between">
+                        <Label>Tick rate</Label>
+                        <span className="text-xs text-muted-foreground">
+                          {ticksPerSecond} ticks/s
+                        </span>
+                      </div>
+                      <Slider
+                        value={[ticksPerSecond]}
+                        min={1}
+                        max={30}
+                        step={1}
+                        onValueChange={(v) => setTicksPerSecond(v[0] ?? 4)}
+                      />
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label>Scroll direction</Label>
+                      <Select
+                        value={scrollDirection}
+                        onValueChange={(v) => setScrollDirection(v as ScrollDirection)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select direction" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="right_to_left">Right → Left</SelectItem>
+                          <SelectItem value="left_to_right">Left → Right</SelectItem>
+                          <SelectItem value="top_to_bottom">Top → Bottom</SelectItem>
+                          <SelectItem value="bottom_to_top">Bottom → Top</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="text-xs text-muted-foreground">
+                        Exits are all free cells on the incoming edge.
+                      </div>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <div className="flex items-center justify-between">
+                        <Label>Seed</Label>
+                        <span className="text-xs text-muted-foreground">{scrollSeed}</span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          const s = Date.now();
+                          setScrollSeed(s);
+                          rngStateRef.current = s >>> 0;
+                        }}
+                      >
+                        New seed
+                      </Button>
+                      <div className="text-xs text-muted-foreground">
+                        Same seed + settings → same terrain.
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {error ? (
                   <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
@@ -401,6 +840,12 @@ export default function App() {
                 <CardTitle>Edit</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-4">
+                {mode === "scrolling" ? (
+                  <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
+                    Scrolling mode generates terrain continuously. Click a free cell on the grid to
+                    move the start.
+                  </div>
+                ) : null}
                 <div className="grid gap-2">
                   <Label>Tool</Label>
                   <ToggleGroup
@@ -408,6 +853,7 @@ export default function App() {
                     value={tool}
                     onValueChange={(v) => v && setTool(v as Tool)}
                     className="flex flex-wrap gap-2"
+                    disabled={mode === "scrolling"}
                   >
                     <ToggleGroupItem value="wall">
                       <Square className="h-4 w-4" />
@@ -511,23 +957,51 @@ export default function App() {
 
                   <div className="grid grid-cols-2 gap-2">
                     <div className="grid gap-2">
-                      <Label>Width</Label>
-                      <Slider
-                        value={[width]}
+                      <Label htmlFor="grid-width">Width</Label>
+                      <Input
+                        id="grid-width"
+                        type="number"
+                        inputMode="numeric"
                         min={8}
                         max={80}
                         step={1}
-                        onValueChange={(v) => resizeGrid(v[0] ?? width, height)}
+                        value={widthDraft}
+                        onChange={(e) => setWidthDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                        }}
+                        onBlur={() => {
+                          const parsed = Number.parseInt(widthDraft, 10);
+                          if (!Number.isFinite(parsed)) {
+                            setWidthDraft(String(width));
+                            return;
+                          }
+                          resizeGrid(parsed, height);
+                        }}
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label>Height</Label>
-                      <Slider
-                        value={[height]}
+                      <Label htmlFor="grid-height">Height</Label>
+                      <Input
+                        id="grid-height"
+                        type="number"
+                        inputMode="numeric"
                         min={8}
                         max={60}
                         step={1}
-                        onValueChange={(v) => resizeGrid(width, v[0] ?? height)}
+                        value={heightDraft}
+                        onChange={(e) => setHeightDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                        }}
+                        onBlur={() => {
+                          const parsed = Number.parseInt(heightDraft, 10);
+                          if (!Number.isFinite(parsed)) {
+                            setHeightDraft(String(height));
+                            return;
+                          }
+                          resizeGrid(width, parsed);
+                        }}
                       />
                     </div>
                   </div>
@@ -540,31 +1014,8 @@ export default function App() {
                 <CardTitle>Metrics</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Result</span>
-                  <span>
-                    {solveResult ? (solveResult.found ? "Path found" : "No path") : "—"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Time</span>
-                  <span>{solveResult ? `${solveResult.elapsed_ms.toFixed(2)} ms` : "—"}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Visited</span>
-                  <span>{solveResult ? solveResult.visited_count : "—"}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Path length</span>
-                  <span>{solveResult ? solveResult.path.length : "—"}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Cost</span>
-                  <span>
-                    {solveResult
-                      ? solveResult.path_cost ?? (solveResult.path.length ? solveResult.path.length - 1 : 0)
-                      : "—"}
-                  </span>
+                <div className="text-muted-foreground">
+                  Metrics are shown in the top bar for quick access.
                 </div>
               </CardContent>
             </Card>
@@ -588,13 +1039,16 @@ export default function App() {
                       gap: "2px",
                     }}
                   >
-                    {cells.map((cell, idx) => {
+                    {(mode === "scrolling" ? scrollingCells : cells).map((cell, idx) => {
                       const isStart = idx === startIdx;
-                      const isGoal = idx === goalIdx;
+                      const isGoal = mode === "grid" ? idx === goalIdx : false;
+                      const isExit = mode === "scrolling" ? scrollExits.has(idx) : false;
                       const isWall = cell.wall;
                       const isWeighted = !cell.wall && cell.weight > 1;
-                      const isVisited = visibleVisited.has(idx);
-                      const isPath = visiblePath.has(idx);
+                      const isVisited = mode === "grid" ? visibleVisited.has(idx) : false;
+                      const isPath =
+                        mode === "grid" ? visiblePath.has(idx) : scrollOverlayBest.has(idx);
+                      const isAnyPath = mode === "scrolling" ? scrollOverlayAll.has(idx) : false;
 
                       const base =
                         "relative flex h-6 w-6 items-center justify-center rounded-[6px] text-[10px] font-medium transition-colors";
@@ -603,9 +1057,13 @@ export default function App() {
                       if (isWall) cls = "bg-foreground/80 text-background";
                       if (isWeighted) cls = "bg-secondary text-secondary-foreground";
                       if (isVisited) cls = "bg-blue-500/30 text-blue-950 dark:text-blue-50";
+                      if (isAnyPath) cls = "bg-fuchsia-500/20 text-fuchsia-950 dark:text-fuchsia-50";
                       if (isPath) cls = "bg-emerald-500/60 text-emerald-950 dark:text-emerald-50";
                       if (isStart) cls = "bg-primary text-primary-foreground";
                       if (isGoal) cls = "bg-destructive text-destructive-foreground";
+                      if (isExit && !isWall && mode === "scrolling" && !isStart) {
+                        cls = `${cls} ring-2 ring-yellow-500/70`;
+                      }
 
                       return (
                         <div
@@ -615,18 +1073,30 @@ export default function App() {
                           className={`${base} ${cls}`}
                           onPointerDown={() => {
                             pointerDownRef.current = true;
-                            applyTool(idx);
+                            if (mode === "scrolling") {
+                              if (!cell.wall) setStart(fromIdx(width, idx));
+                            } else {
+                              applyTool(idx);
+                            }
                           }}
                           onPointerEnter={() => {
-                            if (pointerDownRef.current) applyTool(idx);
+                            if (!pointerDownRef.current) return;
+                            if (mode === "scrolling") return;
+                            applyTool(idx);
                           }}
                           onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") applyTool(idx);
+                            if (e.key !== "Enter" && e.key !== " ") return;
+                            if (mode === "scrolling") {
+                              if (!cell.wall) setStart(fromIdx(width, idx));
+                            } else {
+                              applyTool(idx);
+                            }
                           }}
                         >
                           {isStart ? "S" : null}
                           {isGoal ? "G" : null}
-                          {!isStart && !isGoal && isWeighted ? cell.weight : null}
+                          {isExit && !isStart && !isGoal ? "E" : null}
+                          {!isStart && !isGoal && !isExit && isWeighted ? cell.weight : null}
                         </div>
                       );
                     })}

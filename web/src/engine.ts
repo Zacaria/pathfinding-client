@@ -1,8 +1,9 @@
-import type { Problem, RandomParams, SolveResult } from "@/types";
+import type { MultiGoalProblem, MultiSolveResult, Problem, RandomParams, SolveResult } from "@/types";
 
 type EngineModule = {
   default: () => Promise<void>;
   solve: (problem: Problem) => SolveResult;
+  solve_multi: (problem: MultiGoalProblem) => MultiSolveResult;
   generate_random: (params: RandomParams) => Problem;
 };
 
@@ -18,4 +19,3 @@ export async function loadEngine(): Promise<EngineModule> {
   }
   return enginePromise;
 }
-
