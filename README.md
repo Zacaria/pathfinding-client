@@ -4,6 +4,10 @@ This repo contains a web demo for the `pathfinding` crate on crates.io:
 - Rust engine compiled to WebAssembly (WASM) in `crates/engine`
 - React + shadcn/ui frontend in `web/`
 
+## Demo
+
+[Demo video](docs/demo.mp4)
+
 ## Prerequisites
 - Rust toolchain
 - `wasm-pack` (`cargo install wasm-pack`)
