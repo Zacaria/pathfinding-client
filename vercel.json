@@ -1,0 +1,7 @@
+{
+  "version": 2,
+  "framework": "vite",
+  "installCommand": "cd web && npm install",
+  "buildCommand": "bash scripts/vercel-build.sh",
+  "outputDirectory": "web/dist"
+}

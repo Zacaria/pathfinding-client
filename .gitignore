@@ -10,3 +10,7 @@ web/src/wasm/*.wasm
 web/src/wasm/*.map
 
 .npm-cache
+
+# local dev artifacts
+web-dev.log
+web-dev.pid

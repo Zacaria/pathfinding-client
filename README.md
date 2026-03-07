@@ -1,6 +1,6 @@
 # Pathfinding Demo (Rust WASM + React/shadcn)
 
-This repo contains a web demo for the local `../pathfinding` crate:
+This repo contains a web demo for the `pathfinding` crate on crates.io:
 - Rust engine compiled to WebAssembly (WASM) in `crates/engine`
 - React + shadcn/ui frontend in `web/`
 
@@ -25,3 +25,11 @@ cd web
 npm install
 npm run dev
 ```
+
+## Deploy to Vercel
+
+This repo includes `vercel.json` and `scripts/vercel-build.sh` to install Rust + wasm-pack,
+compile the WASM engine, and build the Vite frontend.
+
+The Vercel build script installs Rust + wasm-pack, builds the WASM engine, then builds the Vite
+frontend using the published `pathfinding` crate.
