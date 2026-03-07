@@ -240,3 +240,53 @@ Notes:
 - Some MCP hosts/clients will close the connection if `resources/list` isn’t supported.
 - After changing `~/.codex/config.toml` or running `codex mcp add/remove`, you usually need to restart Codex.
 
+---
+
+## Playwright video capture (2026-03-08) — what worked vs. didn’t
+
+This repo now has a short demo video in `docs/demo.mp4`. Here’s the exact outcome and pitfalls so the next run is easy.
+
+### What worked
+
+- **Installing Playwright locally in `web/`**:
+  - `cd web && npm install -D playwright@1.50.0`
+  - Then run Playwright from `web/` so `require('playwright')` resolves.
+- **Headed Chromium launch** (not headless) succeeded and recorded a 24s MP4 after re-encoding:
+  - Launch with `headless: false`
+  - Use `recordVideo` to capture to `tmp/video/`
+- **Robust selector for the Scrolling toggle**:
+  - The toggle is rendered as a radio button, so `getByRole('radio', { name: 'Scrolling' })` works.
+
+### What didn’t work
+
+- **Headless Chromium failed** with:
+  - `mach_port_rendezvous ... Permission denied (1100)`
+  - The sandboxed headless shell could not register the MachPort rendezvous service.
+- **`npx -p playwright` / `npm exec --package=playwright`**:
+  - The package was not resolved by `require('playwright')` in our Node script.
+  - Installing Playwright locally was the reliable fix.
+- **Waiting for “Pause”** in the demo flow timed out:
+  - The UI button labels are `Run` / `Start` / `Play` / `Pause` depending on mode/state.
+  - The fast path is: click `Run` (grid), then switch to `Scrolling`, then click `Start`. No `Pause` required for capture.
+
+### Repeatable capture steps
+
+1) Ensure dev server is running and note the port (from `web-dev.log`, e.g., `http://127.0.0.1:5175/`).
+2) Install Playwright (local):
+   - `cd web && npm install -D playwright@1.50.0`
+3) Run capture (headed):
+   - Use a Node script like this (run from `web/`):
+
+```bash
+node -e "const { chromium } = require('playwright');(async () => {const browser = await chromium.launch({ headless: false });const context = await browser.newContext({viewport:{width:1280,height:720},recordVideo:{dir:'../tmp/video',size:{width:1280,height:720}}});const page = await context.newPage();await page.goto('http://127.0.0.1:5175/', { waitUntil: 'networkidle' });await page.waitForTimeout(1200);await page.getByRole('button', { name: 'Random' }).click();await page.waitForTimeout(800);await page.getByRole('button', { name: 'Run' }).click();await page.waitForTimeout(6000);await page.getByRole('radio', { name: 'Scrolling' }).click();await page.waitForTimeout(1000);await page.getByRole('button', { name: 'Start' }).click();await page.waitForTimeout(9000);await context.close();await browser.close();})();"
+```
+
+4) Re-encode to a small MP4:
+
+```bash
+ffmpeg -y -i tmp/video/<latest>.webm -vf "scale=960:-2,fps=24" -c:v libx264 -preset veryslow -crf 30 -pix_fmt yuv420p -an docs/demo.mp4
+```
+
+5) Clean up:
+   - Remove `tmp/`
+   - Revert Playwright dev dependency changes if you don’t want it committed
