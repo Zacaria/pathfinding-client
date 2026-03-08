@@ -16,7 +16,8 @@ rustup target add wasm32-unknown-unknown
 
 if ! command -v wasm-pack >/dev/null 2>&1; then
   echo "Installing wasm-pack..."
-  cargo install wasm-pack --locked
+  curl -sSf https://rustwasm.github.io/wasm-pack/installer/init.sh | sh
+  export PATH="${HOME}/.cargo/bin:${PATH}"
 fi
 
 cd web
