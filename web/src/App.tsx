@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   Flag,
   LocateFixed,
@@ -12,6 +12,12 @@ import {
 } from "lucide-react";
 
 import { loadEngine } from "@/engine";
+import {
+  ALGORITHM_BADGES,
+  ALGORITHM_GROUPS,
+  DEFAULT_ALGORITHM,
+  getAlgorithmOption,
+} from "@/algorithms";
 import type {
   Algorithm,
   Cell,
@@ -26,7 +32,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -163,7 +178,7 @@ export default function App() {
   const [tool, setTool] = useState<Tool>("wall");
   const [paintWeight, setPaintWeight] = useState(5);
 
-  const [algorithm, setAlgorithm] = useState<Algorithm>("astar");
+  const [algorithm, setAlgorithm] = useState<Algorithm>(DEFAULT_ALGORITHM);
   const [yenK, setYenK] = useState(3);
   const [solveResult, setSolveResult] = useState<SolveResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -200,6 +215,7 @@ export default function App() {
 
   const startIdx = useMemo(() => toIdx(width, start), [start, width]);
   const goalIdx = useMemo(() => toIdx(width, goal), [goal, width]);
+  const algorithmMeta = useMemo(() => getAlgorithmOption(algorithm), [algorithm]);
 
   const visibleVisited = useMemo(
     () => new Set(visitedTrace.slice(0, visitedShown)),
@@ -553,15 +569,11 @@ export default function App() {
               <span className="text-muted-foreground">(Rust WASM + shadcn/ui)</span>
             </h1>
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <Badge variant="secondary">BFS</Badge>
-              <Badge variant="secondary">Bi-BFS</Badge>
-              <Badge variant="secondary">DFS</Badge>
-              <Badge variant="secondary">IDDFS</Badge>
-              <Badge variant="secondary">Dijkstra</Badge>
-              <Badge variant="secondary">A*</Badge>
-              <Badge variant="secondary">Fringe</Badge>
-              <Badge variant="secondary">IDA*</Badge>
-              <Badge variant="secondary">Yen</Badge>
+              {ALGORITHM_BADGES.map((label) => (
+                <Badge key={label} variant="secondary">
+                  {label}
+                </Badge>
+              ))}
               <span className="hidden sm:inline">·</span>
               <span>Click/drag to edit. Run to animate.</span>
             </div>
@@ -629,18 +641,22 @@ export default function App() {
                       <SelectValue placeholder="Select an algorithm" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="bfs">BFS</SelectItem>
-                      <SelectItem value="bfs_bidirectional">Bidirectional BFS</SelectItem>
-                      <SelectItem value="dfs">DFS</SelectItem>
-                      <SelectItem value="iddfs">IDDFS</SelectItem>
-                      <SelectItem value="dijkstra">Dijkstra</SelectItem>
-                      <SelectItem value="astar">A*</SelectItem>
-                      <SelectItem value="fringe">Fringe</SelectItem>
-                      <SelectItem value="idastar">IDA*</SelectItem>
-                      <SelectItem value="yen">Yen (k-shortest)</SelectItem>
+                      {ALGORITHM_GROUPS.map((group, index) => (
+                        <Fragment key={group.id}>
+                          {index > 0 ? <SelectSeparator /> : null}
+                          <SelectGroup>
+                            <SelectLabel>{group.label}</SelectLabel>
+                            {group.options.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </Fragment>
+                      ))}
                     </SelectContent>
                   </Select>
-                  {algorithm === "yen" ? (
+                  {algorithmMeta.supportsK ? (
                     <div className="mt-2 grid gap-2">
                       <div className="flex items-center justify-between">
                         <Label>k</Label>
@@ -658,15 +674,12 @@ export default function App() {
                       </div>
                     </div>
                   ) : null}
-                  {algorithm === "bfs" ||
-                  algorithm === "bfs_bidirectional" ||
-                  algorithm === "dfs" ||
-                  algorithm === "iddfs" ? (
+                  {algorithmMeta.ignoresWeights ? (
                     <div className="text-xs text-muted-foreground">
                       This algorithm ignores weights (treats all costs as 1).
                     </div>
                   ) : null}
-                  {algorithm === "iddfs" || algorithm === "idastar" ? (
+                  {algorithmMeta.mayBeSlow ? (
                     <div className="text-xs text-muted-foreground">
                       Tip: start with a smaller grid; this algorithm can be very slow.
                     </div>

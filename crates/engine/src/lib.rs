@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+mod indexed;
+
 use pathfinding::prelude::{
     astar, bfs, bfs_bidirectional, build_path, dfs, dijkstra, dijkstra_all, fringe, idastar, iddfs,
     yen,
@@ -36,6 +38,10 @@ pub enum Algorithm {
     Fringe,
     Idastar,
     Yen,
+    IndexedBfs,
+    IndexedDfs,
+    IndexedDijkstra,
+    IndexedAstar,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -140,8 +146,6 @@ pub fn solve_multi(problem: JsValue) -> Result<JsValue, JsValue> {
 fn solve_problem(problem: &Problem) -> Result<SolveResult, String> {
     validate(problem)?;
 
-    let start_idx = to_idx(problem.width, problem.start);
-    let goal_idx = to_idx(problem.width, problem.goal);
     let open_nodes = problem.cells.iter().filter(|c| !c.wall).count().max(1);
 
     // Some algorithms can be extremely slow on dense graphs due to repeated deepening.
@@ -160,6 +164,12 @@ fn solve_problem(problem: &Problem) -> Result<SolveResult, String> {
         _ => {}
     }
 
+    if indexed::is_indexed_algorithm(problem.algorithm) {
+        return indexed::solve_problem(problem);
+    }
+
+    let start_idx = to_idx(problem.width, problem.start);
+    let goal_idx = to_idx(problem.width, problem.goal);
     let expanded = std::cell::RefCell::<Vec<usize>>::new(Vec::new());
     let expanded_set = std::cell::RefCell::<HashSet<usize>>::new(HashSet::new());
     let record_expand = |idx: usize| {
@@ -269,6 +279,10 @@ fn solve_problem(problem: &Problem) -> Result<SolveResult, String> {
                 None => (None, None),
             }
         }
+        Algorithm::IndexedBfs
+        | Algorithm::IndexedDfs
+        | Algorithm::IndexedDijkstra
+        | Algorithm::IndexedAstar => unreachable!("indexed algorithms are dispatched earlier"),
     };
 
     let elapsed_ms = now_ms() - t0;
@@ -299,18 +313,19 @@ fn solve_problem(problem: &Problem) -> Result<SolveResult, String> {
 fn solve_multi_problem(problem: &MultiGoalProblem) -> Result<MultiSolveResult, String> {
     validate_multi(problem)?;
 
-    let start_idx = to_idx(problem.width, problem.start);
     let goal_indices = problem
         .goals
         .iter()
         .map(|g| to_idx(problem.width, *g))
         .collect::<Vec<_>>();
-
     let open_nodes = problem.cells.iter().filter(|c| !c.wall).count().max(1);
 
     // Per-goal replanning can explode; keep the demo responsive.
     // (Dijkstra computes all goals in one run.)
-    let is_single_source_all = matches!(problem.algorithm, Algorithm::Dijkstra);
+    let is_single_source_all = matches!(
+        problem.algorithm,
+        Algorithm::Dijkstra | Algorithm::IndexedDijkstra
+    );
     if !is_single_source_all && goal_indices.len() > 40 {
         return Err(
             "Too many exits for per-exit algorithms; reduce grid height or slow the tick rate."
@@ -330,6 +345,12 @@ fn solve_multi_problem(problem: &MultiGoalProblem) -> Result<MultiSolveResult, S
         }
         _ => {}
     }
+
+    if indexed::is_indexed_algorithm(problem.algorithm) {
+        return indexed::solve_multi_problem(problem);
+    }
+
+    let start_idx = to_idx(problem.width, problem.start);
 
     let expanded = std::cell::RefCell::<Vec<usize>>::new(Vec::new());
     let expanded_set = std::cell::RefCell::<HashSet<usize>>::new(HashSet::new());
@@ -535,10 +556,14 @@ fn neighbors_4(width: u32, height: u32, idx: usize) -> [Option<usize>; 4] {
     let y = idx / w;
 
     [
-        (y > 0).then_some(idx - w),
-        (x + 1 < w).then_some(idx + 1),
-        (y + 1 < height as usize).then_some(idx + w),
-        (x > 0).then_some(idx - 1),
+        if y > 0 { Some(idx - w) } else { None },
+        if x + 1 < w { Some(idx + 1) } else { None },
+        if y + 1 < height as usize {
+            Some(idx + w)
+        } else {
+            None
+        },
+        if x > 0 { Some(idx - 1) } else { None },
     ]
 }
 
@@ -720,6 +745,10 @@ where
         }
         // Handled at a higher level for multi-goal efficiency.
         Algorithm::Dijkstra => (None, None),
+        Algorithm::IndexedBfs
+        | Algorithm::IndexedDfs
+        | Algorithm::IndexedDijkstra
+        | Algorithm::IndexedAstar => unreachable!("indexed algorithms are dispatched earlier"),
     }
 }
 

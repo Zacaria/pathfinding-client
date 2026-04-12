@@ -14,6 +14,10 @@ export type Algorithm =
   | "fringe"
   | "idastar"
   | "iddfs"
+  | "indexed_astar"
+  | "indexed_bfs"
+  | "indexed_dfs"
+  | "indexed_dijkstra"
   | "yen";
 
 export type Problem = {
