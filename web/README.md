@@ -11,6 +11,7 @@ The UI is a React + TypeScript app styled with shadcn/ui conventions (Tailwind +
 
 ```bash
 npm install
+npm test
 npm run build:wasm
 npm run dev
 ```

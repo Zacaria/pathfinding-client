@@ -3,7 +3,8 @@ members = ["crates/engine"]
 resolver = "2"
 
 [workspace.dependencies]
-pathfinding = "4.11"
+pathfinding = "4.15"
+pathfinding-indexed = "4.15"
 serde = { version = "1", features = ["derive"] }
 serde-wasm-bindgen = "0.6"
 wasm-bindgen = "0.2"
