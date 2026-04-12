@@ -1,0 +1,418 @@
+# Instincts generated from https://github.com/Zacaria/pathfinding-client
+# Generated: 2026-04-12T07:56:09.484Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: pathfinding-client-commit-conventional
+trigger: "when writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: https://github.com/Zacaria/pathfinding-client
+---
+
+# Pathfinding Client Commit Conventional
+
+## Action
+
+Use conventional commit format with prefixes: chore, feat
+
+## Evidence
+
+- 2 commits analyzed
+- Detected conventional commit pattern
+- Examples: chore: add openspec, feat: add indexed pathfinding algorithms and UI grouping
+
+---
+id: pathfinding-client-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/Zacaria/pathfinding-client
+---
+
+# Pathfinding Client Commit Length
+
+## Action
+
+Keep commit messages concise (~38 characters)
+
+## Evidence
+
+- Average commit message length: 38 chars
+- Based on 2 commits
+
+---
+id: pathfinding-client-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/Zacaria/pathfinding-client
+---
+
+# Pathfinding Client Naming Files
+
+## Action
+
+Use PascalCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: PascalCase
+
+---
+id: pathfinding-client-import-alias
+trigger: "when importing modules"
+confidence: 0.85
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/Zacaria/pathfinding-client
+---
+
+# Pathfinding Client Import Alias
+
+## Action
+
+Use path aliases (@/, ~/) instead of relative imports
+
+## Evidence
+
+- Import analysis shows alias pattern
+- Example: import { x } from '@/lib/x'
+
+---
+id: pathfinding-client-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/Zacaria/pathfinding-client
+---
+
+# Pathfinding Client Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: pathfinding-client-arch-type-based
+trigger: "when adding new code"
+confidence: 0.8
+domain: architecture
+source: repo-analysis
+source_repo: https://github.com/Zacaria/pathfinding-client
+---
+
+# Pathfinding Client Arch Type Based
+
+## Action
+
+Place code in the appropriate type folder (components/, services/, utils/, etc.)
+
+## Evidence
+
+- Type-based module organization detected
+- Folders: 
+
+---
+id: pathfinding-client-test-framework
+trigger: "when writing tests"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/Zacaria/pathfinding-client
+---
+
+# Pathfinding Client Test Framework
+
+## Action
+
+Use vitest as the test framework
+
+## Evidence
+
+- Test framework detected: vitest
+- File pattern: *.test.ts
+
+---
+id: pathfinding-client-test-naming
+trigger: "when creating a test file"
+confidence: 0.85
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/Zacaria/pathfinding-client
+---
+
+# Pathfinding Client Test Naming
+
+## Action
+
+Name test files using the pattern: *.test.ts
+
+## Evidence
+
+- File pattern: *.test.ts
+- Consistent across test files
+
+---
+id: pathfinding-client-test-mocking
+trigger: "when mocking dependencies in tests"
+confidence: 0.75
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/Zacaria/pathfinding-client
+---
+
+# Pathfinding Client Test Mocking
+
+## Action
+
+Use vi.mock for mocking
+
+## Evidence
+
+- Mocking pattern detected: vi.mock
+- Consistent across test files
+
+---
+id: pathfinding-client-instinct-file-naming
+trigger: "When creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: Zacaria/pathfinding-client
+---
+
+# Pathfinding Client Instinct File Naming
+
+## Action
+
+Name the file using PascalCase
+
+## Evidence
+
+- Pattern in namingConventions.files
+
+---
+id: pathfinding-client-instinct-function-naming
+trigger: "When defining a new function"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: Zacaria/pathfinding-client
+---
+
+# Pathfinding Client Instinct Function Naming
+
+## Action
+
+Name the function using camelCase
+
+## Evidence
+
+- Pattern in namingConventions.functions
+
+---
+id: pathfinding-client-instinct-class-naming
+trigger: "When defining a new class"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: Zacaria/pathfinding-client
+---
+
+# Pathfinding Client Instinct Class Naming
+
+## Action
+
+Name the class using PascalCase
+
+## Evidence
+
+- Pattern in namingConventions.classes
+
+---
+id: pathfinding-client-instinct-constant-naming
+trigger: "When declaring a constant"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: Zacaria/pathfinding-client
+---
+
+# Pathfinding Client Instinct Constant Naming
+
+## Action
+
+Name the constant using SCREAMING_SNAKE_CASE
+
+## Evidence
+
+- Pattern in namingConventions.constants
+
+---
+id: pathfinding-client-instinct-import-style
+trigger: "When importing modules"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: Zacaria/pathfinding-client
+---
+
+# Pathfinding Client Instinct Import Style
+
+## Action
+
+Use alias import style
+
+## Evidence
+
+- Pattern in importStyle
+
+---
+id: pathfinding-client-instinct-export-style
+trigger: "When exporting modules or functions"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: Zacaria/pathfinding-client
+---
+
+# Pathfinding Client Instinct Export Style
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- Pattern in exportStyle
+
+---
+id: pathfinding-client-instinct-test-file-pattern
+trigger: "When creating a test file"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: Zacaria/pathfinding-client
+---
+
+# Pathfinding Client Instinct Test File Pattern
+
+## Action
+
+Name the file with the pattern *.test.ts
+
+## Evidence
+
+- Pattern in testing.filePattern
+
+---
+id: pathfinding-client-instinct-test-framework
+trigger: "When writing tests"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: Zacaria/pathfinding-client
+---
+
+# Pathfinding Client Instinct Test Framework
+
+## Action
+
+Use the vitest testing framework
+
+## Evidence
+
+- Pattern in testing.framework
+- web/vitest.config.ts
+
+---
+id: pathfinding-client-instinct-test-type
+trigger: "When writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: Zacaria/pathfinding-client
+---
+
+# Pathfinding Client Instinct Test Type
+
+## Action
+
+Write unit tests
+
+## Evidence
+
+- Pattern in testing.testTypes
+
+---
+id: pathfinding-client-instinct-mocking
+trigger: "When mocking dependencies in tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: Zacaria/pathfinding-client
+---
+
+# Pathfinding Client Instinct Mocking
+
+## Action
+
+Use vi.mock for mocking
+
+## Evidence
+
+- Pattern in testing.mockingStyle
+
+---
+id: pathfinding-client-instinct-commit-format
+trigger: "When making a git commit"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: Zacaria/pathfinding-client
+---
+
+# Pathfinding Client Instinct Commit Format
+
+## Action
+
+Format the commit message as <type>: <description>, using 'chore' or 'feat' as type
+
+## Evidence
+
+- Seen in commit: 'chore: add openspec'
+- Seen in commit: 'feat: add indexed pathfinding algorithms and UI grouping'
+- Pattern in commits.prefixes
+
+---
+id: pathfinding-client-instinct-commit-length
+trigger: "When writing a commit message"
+confidence: 0.7
+domain: git
+source: repo-analysis
+source_repo: Zacaria/pathfinding-client
+---
+
+# Pathfinding Client Instinct Commit Length
+
+## Action
+
+Keep the commit message concise (around 38 characters on average)
+
+## Evidence
+
+- Pattern in commits.averageLength
+
