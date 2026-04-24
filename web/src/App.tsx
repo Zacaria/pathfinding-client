@@ -1,7 +1,11 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
+  BookOpen,
+  ExternalLink,
   Flag,
+  Github,
   LocateFixed,
+  Package,
   Pause,
   Play,
   RefreshCw,
@@ -50,6 +54,29 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 type Tool = "wall" | "erase" | "weight" | "start" | "goal";
 type Mode = "grid" | "scrolling";
 type ScrollDirection = "right_to_left" | "left_to_right" | "top_to_bottom" | "bottom_to_top";
+
+const RELATED_LINKS = [
+  {
+    label: "Source",
+    href: "https://github.com/Zacaria/pathfinding-client",
+    Icon: Github,
+  },
+  {
+    label: "pathfinding crate",
+    href: "https://crates.io/crates/pathfinding",
+    Icon: Package,
+  },
+  {
+    label: "pathfinding-indexed crate",
+    href: "https://crates.io/crates/pathfinding-indexed",
+    Icon: Package,
+  },
+  {
+    label: "README",
+    href: "https://github.com/Zacaria/pathfinding-client#readme",
+    Icon: BookOpen,
+  },
+] as const;
 
 function toIdx(width: number, p: Point) {
   return p.y * width + p.x;
@@ -564,10 +591,7 @@ export default function App() {
       <div className="mx-auto flex max-w-7xl flex-col gap-4 p-4">
         <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex flex-col gap-1">
-            <h1 className="text-xl font-semibold tracking-tight">
-              Pathfinding Demo{" "}
-              <span className="text-muted-foreground">(Rust WASM + shadcn/ui)</span>
-            </h1>
+            <h1 className="text-xl font-semibold tracking-tight">Pathfinding Demo</h1>
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               {ALGORITHM_BADGES.map((label) => (
                 <Badge key={label} variant="secondary">
@@ -599,6 +623,17 @@ export default function App() {
                 onCheckedChange={(v) => setDarkMode(Boolean(v))}
               />
             </div>
+            <Button variant="outline" size="icon" asChild>
+              <a
+                href="https://github.com/Zacaria/pathfinding-client"
+                aria-label="Open GitHub repository"
+                title="Open GitHub repository"
+                target="_blank"
+                rel="noreferrer"
+              >
+                <Github aria-hidden="true" />
+              </a>
+            </Button>
           </div>
         </header>
 
@@ -1119,6 +1154,25 @@ export default function App() {
             </Card>
           </main>
         </div>
+
+        <footer className="flex flex-col gap-3 border-t py-4 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+          <span>Related content</span>
+          <nav aria-label="Related content" className="flex flex-wrap items-center gap-2">
+            {RELATED_LINKS.map(({ label, href, Icon }) => (
+              <a
+                key={href}
+                href={href}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-9 items-center gap-2 rounded-md border border-input bg-background px-3 font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                <Icon aria-hidden="true" className="size-4" />
+                <span>{label}</span>
+                <ExternalLink aria-hidden="true" className="size-3.5 text-muted-foreground" />
+              </a>
+            ))}
+          </nav>
+        </footer>
       </div>
     </div>
   );

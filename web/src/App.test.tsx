@@ -1,6 +1,6 @@
-import { render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "@/App";
 
@@ -12,7 +12,43 @@ vi.mock("@/engine", () => ({
   })),
 }));
 
+afterEach(() => {
+  cleanup();
+});
+
 describe("App algorithm selector", () => {
+  it("links to the GitHub repository from the header", () => {
+    render(<App />);
+
+    expect(screen.getByRole("link", { name: "Open GitHub repository" })).toHaveAttribute(
+      "href",
+      "https://github.com/Zacaria/pathfinding-client",
+    );
+  });
+
+  it("renders related content links in the footer", () => {
+    render(<App />);
+
+    const related = screen.getByRole("navigation", { name: "Related content" });
+
+    expect(within(related).getByRole("link", { name: "Source" })).toHaveAttribute(
+      "href",
+      "https://github.com/Zacaria/pathfinding-client",
+    );
+    expect(within(related).getByRole("link", { name: "pathfinding crate" })).toHaveAttribute(
+      "href",
+      "https://crates.io/crates/pathfinding",
+    );
+    expect(within(related).getByRole("link", { name: "pathfinding-indexed crate" })).toHaveAttribute(
+      "href",
+      "https://crates.io/crates/pathfinding-indexed",
+    );
+    expect(within(related).getByRole("link", { name: "README" })).toHaveAttribute(
+      "href",
+      "https://github.com/Zacaria/pathfinding-client#readme",
+    );
+  });
+
   it("renders classic and indexed groups in the algorithm menu", async () => {
     const user = userEvent.setup({ pointerEventsCheck: 0 });
 
