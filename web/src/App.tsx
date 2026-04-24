@@ -1,9 +1,10 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpen,
   ExternalLink,
   Flag,
   Github,
+  HelpCircle,
   LocateFixed,
   Package,
   Pause,
@@ -14,6 +15,7 @@ import {
   Square,
   Wand2,
 } from "lucide-react";
+import { Joyride, STATUS, type EventData, type Step } from "react-joyride";
 
 import { loadEngine } from "@/engine";
 import {
@@ -55,6 +57,8 @@ type Tool = "wall" | "erase" | "weight" | "start" | "goal";
 type Mode = "grid" | "scrolling";
 type ScrollDirection = "right_to_left" | "left_to_right" | "top_to_bottom" | "bottom_to_top";
 
+const TOUR_STORAGE_KEY = "pf-demo-tour-seen-v1";
+
 const RELATED_LINKS = [
   {
     label: "Source",
@@ -77,6 +81,58 @@ const RELATED_LINKS = [
     Icon: BookOpen,
   },
 ] as const;
+
+const TOUR_STEPS: Step[] = [
+  {
+    target: "body",
+    placement: "center",
+    title: "Explore pathfinding",
+    content:
+      "This short tour shows where to choose a mode, set up a grid, run an algorithm, and read the results.",
+  },
+  {
+    target: '[data-tour="mode"]',
+    title: "Choose a mode",
+    content:
+      "Grid mode lets you paint a static problem. Scrolling mode continuously shifts terrain and recomputes paths to exits.",
+  },
+  {
+    target: '[data-tour="algorithm"]',
+    title: "Pick an algorithm",
+    content:
+      "Select the search strategy here. Some algorithms ignore weights, while weighted algorithms use each cell cost.",
+  },
+  {
+    target: '[data-tour="run"]',
+    title: "Run and replay",
+    content:
+      "Run computes the path, then playback controls animate visited cells and the final route.",
+  },
+  {
+    target: '[data-tour="edit"]',
+    title: "Shape the grid",
+    content:
+      "Use the edit tools to place walls, erase cells, add weights, or move the start and goal.",
+  },
+  {
+    target: '[data-tour="grid"]',
+    title: "Interact with cells",
+    content:
+      "Click or drag on the grid to apply the selected tool. The S and G cells mark the start and goal.",
+  },
+  {
+    target: '[data-tour="metrics"]',
+    title: "Compare results",
+    content:
+      "After each run, this bar shows whether a path was found, execution time, visited count, path length, and cost.",
+  },
+  {
+    target: '[data-tour="random"]',
+    title: "Try new cases",
+    content:
+      "Generate random grids and tune wall density, weight density, grid size, and maximum weight.",
+  },
+];
 
 function toIdx(width: number, p: Point) {
   return p.y * width + p.x;
@@ -188,11 +244,19 @@ export default function App() {
     const stored = localStorage.getItem("pf-demo-theme");
     return stored ? stored === "dark" : window.matchMedia?.("(prefers-color-scheme: dark)").matches;
   });
+  const [tourRun, setTourRun] = useState(false);
+  const [tourInstance, setTourInstance] = useState(0);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
     localStorage.setItem("pf-demo-theme", darkMode ? "dark" : "light");
   }, [darkMode]);
+
+  useEffect(() => {
+    if (localStorage.getItem(TOUR_STORAGE_KEY) !== "done") {
+      setTourRun(true);
+    }
+  }, []);
 
   const [width, setWidth] = useState(30);
   const [height, setHeight] = useState(20);
@@ -586,8 +650,71 @@ export default function App() {
     resetPlayback();
   }
 
+  const startTour = useCallback(() => {
+    setTourInstance((current) => current + 1);
+    setTourRun(true);
+  }, []);
+
+  const handleTourEvent = useCallback((data: EventData) => {
+    if (data.status === STATUS.FINISHED || data.status === STATUS.SKIPPED) {
+      localStorage.setItem(TOUR_STORAGE_KEY, "done");
+      setTourRun(false);
+    }
+  }, []);
+
   return (
     <div className="min-h-full bg-background">
+      <Joyride
+        key={tourInstance}
+        continuous
+        run={tourRun}
+        scrollToFirstStep
+        steps={TOUR_STEPS}
+        locale={{
+          last: "Done",
+          next: "Next",
+          nextWithProgress: "Next ({current}/{total})",
+          skip: "Skip",
+        }}
+        options={{
+          arrowColor: "hsl(var(--popover))",
+          backgroundColor: "hsl(var(--popover))",
+          buttons: ["back", "skip", "primary"],
+          overlayClickAction: false,
+          overlayColor: "rgba(2, 6, 23, 0.72)",
+          primaryColor: "hsl(var(--primary))",
+          scrollDuration: 450,
+          showProgress: true,
+          textColor: "hsl(var(--popover-foreground))",
+          width: 360,
+          zIndex: 70,
+        }}
+        styles={{
+          buttonBack: {
+            color: "hsl(var(--muted-foreground))",
+          },
+          buttonPrimary: {
+            borderRadius: 6,
+            color: "hsl(var(--primary-foreground))",
+          },
+          buttonSkip: {
+            color: "hsl(var(--muted-foreground))",
+          },
+          tooltip: {
+            border: "1px solid hsl(var(--border))",
+            borderRadius: 8,
+            boxShadow: "0 20px 48px rgba(0, 0, 0, 0.32)",
+          },
+          tooltipContent: {
+            lineHeight: 1.5,
+          },
+          tooltipTitle: {
+            fontSize: 16,
+            fontWeight: 600,
+          },
+        }}
+        onEvent={handleTourEvent}
+      />
       <div className="mx-auto flex max-w-7xl flex-col gap-4 p-4">
         <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex flex-col gap-1">
@@ -603,7 +730,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3" data-tour="mode">
             <ToggleGroup
               type="single"
               value={mode}
@@ -623,6 +750,16 @@ export default function App() {
                 onCheckedChange={(v) => setDarkMode(Boolean(v))}
               />
             </div>
+            <Button
+              variant="outline"
+              size="icon"
+              type="button"
+              aria-label="Open UI tour"
+              title="Open UI tour"
+              onClick={startTour}
+            >
+              <HelpCircle aria-hidden="true" />
+            </Button>
             <Button variant="outline" size="icon" asChild>
               <a
                 href="https://github.com/Zacaria/pathfinding-client"
@@ -637,7 +774,10 @@ export default function App() {
           </div>
         </header>
 
-        <Card className="sticky top-0 z-10 border bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <Card
+          className="sticky top-0 z-10 border bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+          data-tour="metrics"
+        >
           <CardContent className="grid gap-2 p-4 text-sm sm:grid-cols-5">
             <div className="flex items-center justify-between gap-2 sm:flex-col sm:items-start">
               <span className="text-muted-foreground">Result</span>
@@ -669,7 +809,7 @@ export default function App() {
                 <CardTitle>Run</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-4">
-                <div className="grid gap-2">
+                <div className="grid gap-2" data-tour="algorithm">
                   <Label>Algorithm</Label>
                   <Select value={algorithm} onValueChange={(v) => setAlgorithm(v as Algorithm)}>
                     <SelectTrigger>
@@ -721,7 +861,7 @@ export default function App() {
                   ) : null}
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2" data-tour="run">
                   <Button
                     onClick={mode === "scrolling" ? () => setScrollingRunning(true) : runSolve}
                   >
@@ -887,7 +1027,7 @@ export default function App() {
               <CardHeader>
                 <CardTitle>Edit</CardTitle>
               </CardHeader>
-              <CardContent className="flex flex-col gap-4">
+              <CardContent className="flex flex-col gap-4" data-tour="edit">
                 {mode === "scrolling" ? (
                   <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
                     Scrolling mode generates terrain continuously. Click a free cell on the grid to
@@ -943,7 +1083,7 @@ export default function App() {
 
                 <Separator />
 
-                <div className="grid gap-3">
+                <div className="grid gap-3" data-tour="random">
                   <div className="flex flex-wrap gap-2">
                     <Button variant="secondary" onClick={randomize}>
                       <Shuffle className="h-4 w-4" />
@@ -1070,7 +1210,7 @@ export default function App() {
           </aside>
 
           <main>
-            <Card className="h-full">
+            <Card className="h-full" data-tour="grid">
               <CardHeader>
                 <CardTitle>Grid</CardTitle>
               </CardHeader>

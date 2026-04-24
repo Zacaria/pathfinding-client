@@ -1,6 +1,6 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "@/App";
 
@@ -12,8 +12,13 @@ vi.mock("@/engine", () => ({
   })),
 }));
 
+beforeEach(() => {
+  localStorage.clear();
+});
+
 afterEach(() => {
   cleanup();
+  localStorage.clear();
 });
 
 describe("App algorithm selector", () => {
@@ -47,6 +52,17 @@ describe("App algorithm selector", () => {
       "href",
       "https://github.com/Zacaria/pathfinding-client#readme",
     );
+  });
+
+  it("opens the UI tour from the header help button", async () => {
+    localStorage.setItem("pf-demo-tour-seen-v1", "done");
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Open UI tour" }));
+
+    expect(screen.getByText("Explore pathfinding")).toBeInTheDocument();
   });
 
   it("renders classic and indexed groups in the algorithm menu", async () => {
