@@ -2,7 +2,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import App from "@/App";
+import App, { TOUR_STEPS } from "@/App";
 
 vi.mock("@/engine", () => ({
   loadEngine: vi.fn(async () => ({
@@ -63,6 +63,15 @@ describe("App algorithm selector", () => {
     await user.click(screen.getByRole("button", { name: "Open UI tour" }));
 
     expect(screen.getByText("Explore pathfinding")).toBeInTheDocument();
+  });
+
+  it("adds extra scroll offset for tour steps below the sticky metrics bar", () => {
+    const tourStepsByTarget = new Map(TOUR_STEPS.map((step) => [String(step.target), step]));
+
+    expect(tourStepsByTarget.get('[data-tour="algorithm"]')?.scrollOffset).toBe(104);
+    expect(tourStepsByTarget.get('[data-tour="run"]')?.scrollOffset).toBe(104);
+    expect(tourStepsByTarget.get('[data-tour="edit"]')?.scrollOffset).toBe(104);
+    expect(tourStepsByTarget.get('[data-tour="random"]')?.scrollOffset).toBe(104);
   });
 
   it("renders classic and indexed groups in the algorithm menu", async () => {

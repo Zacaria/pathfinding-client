@@ -58,6 +58,8 @@ type Mode = "grid" | "scrolling";
 type ScrollDirection = "right_to_left" | "left_to_right" | "top_to_bottom" | "bottom_to_top";
 
 const TOUR_STORAGE_KEY = "pf-demo-tour-seen-v1";
+const TOUR_SCROLL_OFFSET = 104;
+const TOUR_TARGET_CLASS = "scroll-mt-28 sm:scroll-mt-24";
 
 const RELATED_LINKS = [
   {
@@ -82,7 +84,7 @@ const RELATED_LINKS = [
   },
 ] as const;
 
-const TOUR_STEPS: Step[] = [
+export const TOUR_STEPS: Step[] = [
   {
     target: "body",
     placement: "center",
@@ -99,18 +101,21 @@ const TOUR_STEPS: Step[] = [
   {
     target: '[data-tour="algorithm"]',
     title: "Pick an algorithm",
+    scrollOffset: TOUR_SCROLL_OFFSET,
     content:
       "Select the search strategy here. Some algorithms ignore weights, while weighted algorithms use each cell cost.",
   },
   {
     target: '[data-tour="run"]',
     title: "Run and replay",
+    scrollOffset: TOUR_SCROLL_OFFSET,
     content:
       "Run computes the path, then playback controls animate visited cells and the final route.",
   },
   {
     target: '[data-tour="edit"]',
     title: "Shape the grid",
+    scrollOffset: TOUR_SCROLL_OFFSET,
     content:
       "Use the edit tools to place walls, erase cells, add weights, or move the start and goal.",
   },
@@ -129,6 +134,7 @@ const TOUR_STEPS: Step[] = [
   {
     target: '[data-tour="random"]',
     title: "Try new cases",
+    scrollOffset: TOUR_SCROLL_OFFSET,
     content:
       "Generate random grids and tune wall density, weight density, grid size, and maximum weight.",
   },
@@ -811,7 +817,7 @@ export default function App() {
                 <CardTitle>Run</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-4">
-                <div className="grid gap-2" data-tour="algorithm">
+                <div className={`grid gap-2 ${TOUR_TARGET_CLASS}`} data-tour="algorithm">
                   <Label>Algorithm</Label>
                   <Select value={algorithm} onValueChange={(v) => setAlgorithm(v as Algorithm)}>
                     <SelectTrigger>
@@ -863,7 +869,7 @@ export default function App() {
                   ) : null}
                 </div>
 
-                <div className="flex flex-wrap gap-2" data-tour="run">
+                <div className={`flex flex-wrap gap-2 ${TOUR_TARGET_CLASS}`} data-tour="run">
                   <Button
                     onClick={mode === "scrolling" ? () => setScrollingRunning(true) : runSolve}
                   >
@@ -1029,7 +1035,7 @@ export default function App() {
               <CardHeader>
                 <CardTitle>Edit</CardTitle>
               </CardHeader>
-              <CardContent className="flex flex-col gap-4" data-tour="edit">
+              <CardContent className={`flex flex-col gap-4 ${TOUR_TARGET_CLASS}`} data-tour="edit">
                 {mode === "scrolling" ? (
                   <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
                     Scrolling mode generates terrain continuously. Click a free cell on the grid to
@@ -1085,7 +1091,7 @@ export default function App() {
 
                 <Separator />
 
-                <div className="grid gap-3" data-tour="random">
+                <div className={`grid gap-3 ${TOUR_TARGET_CLASS}`} data-tour="random">
                   <div className="flex flex-wrap gap-2">
                     <Button variant="secondary" onClick={randomize}>
                       <Shuffle className="h-4 w-4" />
