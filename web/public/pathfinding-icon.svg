@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Pathfinding Demo">
+  <rect width="64" height="64" rx="12" fill="#0f172a"/>
+  <path d="M14 48h36" stroke="#e2e8f0" stroke-width="4" stroke-linecap="round"/>
+  <path d="M16 46V18h28" stroke="#38bdf8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M44 18l-8-6m8 6-8 6" stroke="#38bdf8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="16" cy="46" r="6" fill="#22c55e"/>
+  <circle cx="48" cy="48" r="6" fill="#f97316"/>
+  <rect x="25" y="27" width="8" height="8" rx="2" fill="#f8fafc"/>
+  <rect x="38" y="32" width="8" height="8" rx="2" fill="#f8fafc"/>
+</svg>
