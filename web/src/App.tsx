@@ -718,7 +718,9 @@ export default function App() {
       <div className="mx-auto flex max-w-7xl flex-col gap-4 p-4">
         <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex flex-col gap-1">
-            <h1 className="text-xl font-semibold tracking-tight">Pathfinding Demo</h1>
+            <h1 className="text-xl font-semibold tracking-tight">
+              Pathfinding Demo for Teachers
+            </h1>
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               {ALGORITHM_BADGES.map((label) => (
                 <Badge key={label} variant="secondary">
@@ -726,7 +728,7 @@ export default function App() {
                 </Badge>
               ))}
               <span className="hidden sm:inline">·</span>
-              <span>Click/drag to edit. Run to animate.</span>
+              <span>Explain graph search with editable grids and step-by-step animation.</span>
             </div>
           </div>
 
