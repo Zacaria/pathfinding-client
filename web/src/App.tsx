@@ -308,7 +308,7 @@ export default function App() {
   const [scrollOverlayBest, setScrollOverlayBest] = useState<Set<number>>(() => new Set());
   const [scrollExits, setScrollExits] = useState<Set<number>>(() => new Set());
   const [tickMs, setTickMs] = useState<number | null>(null);
-  const tickHistoryRef = useRef<number[]>([]);
+  const [tickHistory, setTickHistory] = useState<number[]>([]);
 
   const startIdx = useMemo(() => toIdx(width, start), [start, width]);
   const goalIdx = useMemo(() => toIdx(width, goal), [goal, width]);
@@ -332,7 +332,14 @@ export default function App() {
           : multiSolve.reachable_goals_count > 0
             ? "Exit reachable"
             : "No exit";
-      const time = tickMs != null ? `${tickMs.toFixed(2)} ms/tick` : "—";
+      const averageTickMs =
+        tickHistory.length > 0
+          ? tickHistory.reduce((sum, sample) => sum + sample, 0) / tickHistory.length
+          : null;
+      const time =
+        tickMs != null && averageTickMs != null
+          ? `${tickMs.toFixed(2)} ms/tick · ${averageTickMs.toFixed(2)} ms avg (last ${tickHistory.length})`
+          : "—";
       const visited = multiSolve != null ? String(multiSolve.visited_count) : "—";
       const pathLen = multiSolve?.best_goal_index != null
         ? String(multiSolve.results[multiSolve.best_goal_index]?.path.length ?? 0)
@@ -377,7 +384,7 @@ export default function App() {
       costValue: cost,
       pathLen,
     };
-  }, [mode, multiSolve, solveResult, tickMs]);
+  }, [mode, multiSolve, solveResult, tickHistory, tickMs]);
 
   useEffect(() => {
     loadEngine()
@@ -416,7 +423,7 @@ export default function App() {
     setScrollOverlayBest(new Set());
     setScrollExits(new Set());
     setTickMs(null);
-    tickHistoryRef.current = [];
+    setTickHistory([]);
     rngStateRef.current = scrollSeed >>> 0;
     setError(null);
   }, [cells, mode, scrollSeed]);
@@ -461,7 +468,7 @@ export default function App() {
     const r = engine.solve_multi(problem);
     const dt = performance.now() - t0;
     setTickMs(dt);
-    tickHistoryRef.current = [...tickHistoryRef.current.slice(-29), dt];
+    setTickHistory((history) => [...history.slice(-29), dt]);
     setMultiSolve(r);
 
     const all = new Set<number>();
@@ -928,7 +935,7 @@ export default function App() {
                         setScrollOverlayBest(new Set());
                         setScrollExits(new Set());
                         setTickMs(null);
-                        tickHistoryRef.current = [];
+                        setTickHistory([]);
                         rngStateRef.current = scrollSeed >>> 0;
                         setError(null);
                       } else {

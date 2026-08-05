@@ -394,7 +394,7 @@ fn solve_multi_problem(problem: &MultiGoalProblem) -> Result<MultiSolveResult, S
 
             if found {
                 reachable += 1;
-                if best_cost.map_or(true, |bc| cost.unwrap_or(u32::MAX) < bc) {
+                if best_cost.is_none_or(|bc| cost.unwrap_or(u32::MAX) < bc) {
                     best_cost = cost;
                     best_goal_index = Some(i as u32);
                 }
@@ -425,7 +425,7 @@ fn solve_multi_problem(problem: &MultiGoalProblem) -> Result<MultiSolveResult, S
 
             if found {
                 reachable += 1;
-                if best_cost.map_or(true, |bc| cost.unwrap_or(u32::MAX) < bc) {
+                if best_cost.is_none_or(|bc| cost.unwrap_or(u32::MAX) < bc) {
                     best_cost = cost;
                     best_goal_index = Some(i as u32);
                 }

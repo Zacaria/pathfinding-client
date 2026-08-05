@@ -22,4 +22,4 @@
 
 ## 5. Validation
 - [x] 5.1 Run `cargo fmt` and `cargo check`
-- [ ] 5.2 Manually verify `wasm-pack build` and `npm run dev` render and animations work
+- [x] 5.2 Manually verify `wasm-pack build` and `npm run dev` render and animations work
